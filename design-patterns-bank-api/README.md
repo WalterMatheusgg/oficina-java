@@ -94,6 +94,18 @@ O armazenamento de contas e histórico é em memória. Reiniciar a aplicação r
 
 A versão também não implementa autenticação, autorização ou persistência real. Esses seriam próximos passos antes de pensar em uso fora de um ambiente de estudo.
 
+## 🧪 Testes e integração contínua
+
+A suíte cobre as regras de depósito e saque, valores inválidos, saldo insuficiente e os endpoints de consulta, operação e histórico.
+
+Para executar localmente:
+
+```bash
+mvn test
+```
+
+O GitHub Actions executa `mvn verify` em alterações no Pulso e em pull requests que modifiquem a API.
+
 ## 🛠️ Tecnologias
 
 Java 21 · Spring Boot · Spring Web · Maven
