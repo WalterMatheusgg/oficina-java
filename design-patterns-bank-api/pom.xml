@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>br.com.walter</groupId>
-    <artifactId>design-patterns-bank-api</artifactId>
+    <artifactId>pulso-banking-api</artifactId>
     <version>1.0.0</version>
-    <name>Design Patterns Bank API</name>
-    <description>API bancária didática com padrões GoF e Spring Framework</description>
+    <name>Pulso Banking API</name>
+    <description>API de operações financeiras com eventos e padrões de projeto em Spring</description>
 
     <properties>
         <java.version>21</java.version>
