@@ -1,5 +1,6 @@
 package br.com.walter.designpatterns.api;
 
+import br.com.walter.designpatterns.event.TransactionCompleted;
 import br.com.walter.designpatterns.service.TransactionFacade;
 import br.com.walter.designpatterns.service.TransactionHistory;
 import org.springframework.http.HttpStatus;
@@ -35,7 +36,9 @@ public class TransactionController {
     @GetMapping("/{accountId}/transactions")
     public List<TransactionResponse> getTransactions(@PathVariable String accountId) {
         transactionFacade.getAccount(accountId);
-        return transactionHistory.findByAccountId(accountId);
+        return transactionHistory.findByAccountId(accountId).stream()
+                .map(TransactionController::toResponse)
+                .toList();
     }
 
     @PostMapping("/{accountId}/transactions")
@@ -45,5 +48,16 @@ public class TransactionController {
             @RequestBody TransactionRequest request
     ) {
         return transactionFacade.process(accountId, request);
+    }
+
+    private static TransactionResponse toResponse(TransactionCompleted event) {
+        return new TransactionResponse(
+                event.transactionId(),
+                event.accountId(),
+                event.type(),
+                event.amount(),
+                event.balanceAfter(),
+                event.createdAt()
+        );
     }
 }
