@@ -1,60 +1,77 @@
 <div align="center">
 
 # 💳 Pulso Banking API
-### Operações financeiras • Event-driven • Design Patterns
+### Operações financeiras • Persistência transacional • Design Patterns
 
-![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-6DB33F?style=for-the-badge&logo=springboot&logoColor=white) ![Maven](https://img.shields.io/badge/Maven-3-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-6DB33F?style=for-the-badge&logo=springboot&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
 </div>
 
 ## 🎯 Sobre
 
-Uma API pequena para estudar decisões que aparecem em sistemas financeiros: movimentar saldo com segurança, manter um histórico legível e deixar cada operação fácil de estender.
+API bancária didática criada para praticar decisões comuns em sistemas financeiros: movimentar saldo, evitar operações duplicadas e manter o extrato consistente com o estado da conta.
 
-O foco do projeto é mostrar como os padrões de projeto podem resolver problemas concretos. Depósito e saque seguem caminhos próprios, mas compartilham a mesma entrada e o mesmo contrato HTTP. Depois de uma operação bem-sucedida, a aplicação publica um evento e registra a movimentação no histórico.
+Depósitos e saques usam estratégias próprias. Cada operação atualiza o saldo e grava seu lançamento no PostgreSQL dentro da mesma transação. Uma chave de idempotência protege contra repetição acidental de uma requisição.
 
-## ✨ O que dá para fazer
+## ✨ O que a API oferece
 
-- Consultar o saldo de uma conta.
-- Depositar e sacar usando valores `BigDecimal`.
-- Consultar o histórico com identificador e horário de cada movimentação.
-- Receber erros HTTP consistentes para conta inexistente, valor inválido ou saldo insuficiente.
+- Consulta de conta e saldo.
+- Depósito e saque com valores monetários em `BigDecimal` e precisão de centavos.
+- Histórico persistido de movimentações com identificador e data.
+- Idempotência por conta e pela chave `Idempotency-Key`.
+- Erros claros para conta inexistente, valor inválido, saldo insuficiente e conflito de chave.
 
-## 🏗️ Como uma operação percorre a aplicação
+## 🏗️ Fluxo de uma operação
 
 ```mermaid
 flowchart TD
     A["HTTP request"] --> B["TransactionController"]
     B --> C["TransactionFacade"]
-    C --> D["TransactionStrategy"]
-    D --> E["Account"]
-    C --> F["TransactionCompleted event"]
-    F --> G["TransactionHistory"]
+    C --> D["Lock da conta + idempotência"]
+    D --> E["TransactionStrategy"]
+    E --> F["Atualiza saldo"]
+    F --> G["Grava lançamento"]
+    G --> H["Commit PostgreSQL"]
+    H --> I["Evento Spring após commit"]
 ```
 
-A estratégia altera o saldo no domínio. Só depois da operação concluída a fachada publica o evento; o listener atualiza o histórico. Assim, a API não precisa conhecer os detalhes de como o histórico é armazenado.
+## 🧩 Padrões e decisões
 
-## 🧩 Padrões e escolhas
-
-| Conceito | Onde aparece | Por que está aqui |
+| Conceito | Onde aparece | Papel |
 |---|---|---|
-| Strategy | `DepositStrategy`, `WithdrawalStrategy` | Cada tipo de operação tem sua regra sem ramificações espalhadas pela API. |
-| Facade | `TransactionFacade` | Coordena validação, busca da conta, execução e publicação do evento. |
-| Repository | `AccountRepository` | Mantém a regra de negócio separada do armazenamento. |
-| Observer / eventos do Spring | `TransactionCompleted`, `TransactionHistory` | O histórico reage à operação concluída sem ficar acoplado à estratégia. |
-| Injeção de dependências | Beans do Spring | As implementações são conectadas pelo container. |
+| Strategy | `DepositStrategy`, `WithdrawalStrategy` | Mantém as regras de cada operação separadas. |
+| Facade | `TransactionFacade` | Coordena validação, idempotência, saldo, histórico e publicação do evento. |
+| Repository | `AccountRepository`, `TransactionRepository` | Separa os serviços das implementações JPA e do PostgreSQL. |
+| Observer / eventos do Spring | `TransactionCompleted`, `TransactionCompletedListener` | Emite um evento depois do commit para consumidores complementares. |
+| Injeção de dependências | Beans do Spring | Conecta as implementações no container. |
+
+## 🔒 Idempotência e consistência
+
+O cliente envia uma chave `Idempotency-Key` por operação. Se repetir a mesma chave para a mesma conta e os mesmos dados, a API devolve o resultado original sem movimentar o saldo de novo. Se reutilizar a chave com outra operação ou valor, recebe HTTP `409 Conflict`.
+
+A conta é bloqueada para atualização durante o processamento. A alteração do saldo e a inserção do lançamento são feitas na mesma transação PostgreSQL: se a gravação do histórico falhar, a atualização do saldo também é revertida. Uma restrição única no banco reforça a idempotência mesmo diante de concorrência.
+
+O evento do Spring é disparado após o commit. O histórico é consultado diretamente no PostgreSQL, não depende do listener para ser gravado. Esta versão ainda não usa uma fila durável como Kafka ou RabbitMQ.
 
 ## ⚙️ Como executar
 
-Requisitos: JDK 21 e Maven.
+Requisitos: JDK 21, Maven e Docker com Compose.
+
+Na pasta do projeto, suba o PostgreSQL:
 
 ```bash
-git clone https://github.com/WalterMatheusgg/oficina-java.git
-cd oficina-java/design-patterns-bank-api
+docker compose up -d db
+```
+
+Depois inicie a API:
+
+```bash
 mvn spring-boot:run
 ```
 
-A aplicação inicia em `http://localhost:8080`. As contas de demonstração são `ACC-1001` (R$ 1.000,00) e `ACC-1002` (R$ 250,00).
+A aplicação inicia em `http://localhost:8080`. O Flyway cria as tabelas e inclui as contas de demonstração `ACC-1001` (R$ 1.000,00) e `ACC-1002` (R$ 250,00).
+
+As configurações padrão do banco local são `pulso` / `pulso`. É possível sobrescrevê-las com `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`. Para desligar o banco mantendo os dados, use `docker compose down`. Apagar o volume com `docker compose down -v` remove os dados locais.
 
 ## 🔌 Exemplos de uso
 
@@ -64,11 +81,12 @@ Consultar uma conta:
 curl http://localhost:8080/api/accounts/ACC-1001
 ```
 
-Depositar:
+Depositar. Reutilize a mesma chave somente ao repetir esta mesma requisição:
 
 ```bash
 curl -X POST http://localhost:8080/api/accounts/ACC-1001/transactions \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: deposito-001" \
   -d '{"type":"DEPOSIT","amount":150.00}'
 ```
 
@@ -77,41 +95,36 @@ Sacar:
 ```bash
 curl -X POST http://localhost:8080/api/accounts/ACC-1001/transactions \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: saque-001" \
   -d '{"type":"WITHDRAWAL","amount":50.00}'
 ```
 
-Consultar o histórico da conta:
+Consultar o histórico persistido:
 
 ```bash
 curl http://localhost:8080/api/accounts/ACC-1001/transactions
 ```
 
-Uma movimentação concluída retorna `transactionId`, `accountId`, `type`, `amount`, `balanceAfter` e `createdAt`. Os tipos aceitos são `DEPOSIT` e `WITHDRAWAL`.
-
-## ⚠️ Limites desta versão
-
-O armazenamento de contas e histórico é em memória. Reiniciar a aplicação restaura os saldos de exemplo e apaga as movimentações. O evento é publicado dentro do processo e tratado de forma síncrona; isso ajuda a estudar o fluxo, mas não substitui uma fila durável quando a entrega do evento precisa sobreviver a falhas.
-
-A versão também não implementa autenticação, autorização ou persistência real. Esses seriam próximos passos antes de pensar em uso fora de um ambiente de estudo.
+Os tipos aceitos são `DEPOSIT` e `WITHDRAWAL`. Uma operação concluída retorna `transactionId`, `accountId`, `type`, `amount`, `balanceAfter` e `createdAt`.
 
 ## 🧪 Testes e integração contínua
 
-A suíte cobre as regras de depósito e saque, valores inválidos, saldo insuficiente e os endpoints de consulta, operação e histórico.
+A suíte cobre regras de saldo, precisão monetária, endpoints, idempotência, conflito de chave e consistência entre saldo e histórico. O GitHub Actions sobe PostgreSQL 16 e executa `mvn verify` em alterações no projeto e em pull requests.
 
-Para executar localmente:
+Para executar localmente, com o banco iniciado:
 
 ```bash
 mvn test
 ```
 
-O GitHub Actions executa `mvn verify` em alterações no Pulso e em pull requests que modifiquem a API.
+## ⚠️ Escopo
 
-## 🛠️ Tecnologias
-
-Java 21 · Spring Boot · Spring Web · Maven
+Este é um projeto didático, não um sistema bancário pronto para produção. Ele não implementa autenticação, autorização, transferências, integração com meios de pagamento, mensageria durável ou políticas operacionais de um banco real.
 
 ## 📚 Contexto
 
-Projeto de portfólio desenvolvido durante os estudos de Java e Spring, a partir do desafio de Design Patterns da DIO. A ideia foi conectar os padrões a um fluxo familiar de uma API financeira, sem esconder as simplificações da implementação.
+Projeto de portfólio feito para o desafio **Design Patterns com Java: Dos Clássicos (GoF) ao Spring Framework**, da DIO. A proposta foi criar uma API própria em Spring Boot e aplicar padrões a um fluxo financeiro simples.
+
+Referências do laboratório: [Java Puro](https://github.com/digitalinnovationone/lab-padroes-projeto-java) · [Spring](https://github.com/digitalinnovationone/lab-padroes-projeto-spring).
 
 [← Voltar aos outros exercícios Java do repositório](../README.md)

@@ -1,6 +1,6 @@
 package br.com.walter.designpatterns.api;
 
-import br.com.walter.designpatterns.event.TransactionCompleted;
+import br.com.walter.designpatterns.domain.TransactionRecord;
 import br.com.walter.designpatterns.service.TransactionFacade;
 import br.com.walter.designpatterns.service.TransactionHistory;
 import org.springframework.http.HttpStatus;
@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -45,19 +46,20 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     public TransactionResponse createTransaction(
             @PathVariable String accountId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody TransactionRequest request
     ) {
-        return transactionFacade.process(accountId, request);
+        return transactionFacade.process(accountId, idempotencyKey, request);
     }
 
-    private static TransactionResponse toResponse(TransactionCompleted event) {
+    private static TransactionResponse toResponse(TransactionRecord transaction) {
         return new TransactionResponse(
-                event.transactionId(),
-                event.accountId(),
-                event.type(),
-                event.amount(),
-                event.balanceAfter(),
-                event.createdAt()
+                transaction.transactionId(),
+                transaction.accountId(),
+                transaction.type(),
+                transaction.amount(),
+                transaction.balanceAfter(),
+                transaction.createdAt()
         );
     }
 }

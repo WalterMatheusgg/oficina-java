@@ -37,10 +37,11 @@ Para iniciar a API, instale também o Maven:
 
 ```bash
 cd design-patterns-bank-api
+docker compose up -d db
 mvn spring-boot:run
 ```
 
-A API inicia em `http://localhost:8080`. O [README do Pulso](design-patterns-bank-api/README.md) tem exemplos de requisição, arquitetura e limites da implementação.
+A API inicia em `http://localhost:8080`. A aplicação usa PostgreSQL local; o [README do Pulso](design-patterns-bank-api/README.md) tem exemplos de requisição, arquitetura, idempotência e limites da implementação.
 
 ## Conceitos em prática
 

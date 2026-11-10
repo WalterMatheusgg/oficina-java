@@ -1,26 +1,20 @@
 package br.com.walter.designpatterns.service;
 
-import br.com.walter.designpatterns.event.TransactionCompleted;
-import org.springframework.context.event.EventListener;
+import br.com.walter.designpatterns.domain.TransactionRecord;
+import br.com.walter.designpatterns.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class TransactionHistory {
-    private final List<TransactionCompleted> entries = new CopyOnWriteArrayList<>();
+    private final TransactionRepository transactionRepository;
 
-    @EventListener
-    public void record(TransactionCompleted event) {
-        entries.add(event);
+    public TransactionHistory(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
     }
 
-    public List<TransactionCompleted> findByAccountId(String accountId) {
-        return entries.stream()
-                .filter(entry -> entry.accountId().equals(accountId))
-                .sorted(Comparator.comparing(TransactionCompleted::createdAt).reversed())
-                .toList();
+    public List<TransactionRecord> findByAccountId(String accountId) {
+        return transactionRepository.findAllByAccountId(accountId);
     }
 }
