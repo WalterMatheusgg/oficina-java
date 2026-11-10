@@ -33,7 +33,7 @@ class TransactionControllerTest {
     void getsExistingAccount() throws Exception {
         mockMvc.perform(get("/api/accounts/ACC-1001"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("ACC-1001"))
+                .andExpect(jsonPath("$.accountId").value("ACC-1001"))
                 .andExpect(jsonPath("$.balance").exists());
     }
 
