@@ -4,25 +4,32 @@ import br.com.walter.designpatterns.api.AccountResponse;
 import br.com.walter.designpatterns.api.TransactionRequest;
 import br.com.walter.designpatterns.api.TransactionResponse;
 import br.com.walter.designpatterns.domain.Account;
+import br.com.walter.designpatterns.event.TransactionCompleted;
 import br.com.walter.designpatterns.repository.AccountRepository;
 import br.com.walter.designpatterns.strategy.TransactionStrategy;
 import br.com.walter.designpatterns.strategy.TransactionStrategyResolver;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 public class TransactionFacade {
     private final AccountRepository accountRepository;
     private final TransactionStrategyResolver strategyResolver;
+    private final ApplicationEventPublisher eventPublisher;
 
     public TransactionFacade(
             AccountRepository accountRepository,
-            TransactionStrategyResolver strategyResolver
+            TransactionStrategyResolver strategyResolver,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.accountRepository = accountRepository;
         this.strategyResolver = strategyResolver;
+        this.eventPublisher = eventPublisher;
     }
 
     public AccountResponse getAccount(String accountId) {
@@ -44,7 +51,17 @@ public class TransactionFacade {
         TransactionStrategy strategy = strategyResolver.resolve(request.type());
         BigDecimal balanceAfter = strategy.execute(account, amount);
 
-        return new TransactionResponse(account.id(), request.type(), amount, balanceAfter);
+        TransactionResponse transaction = new TransactionResponse(
+                UUID.randomUUID(),
+                account.id(),
+                request.type(),
+                amount,
+                balanceAfter,
+                Instant.now()
+        );
+
+        eventPublisher.publishEvent(new TransactionCompleted(transaction));
+        return transaction;
     }
 
     private Account findAccount(String accountId) {
