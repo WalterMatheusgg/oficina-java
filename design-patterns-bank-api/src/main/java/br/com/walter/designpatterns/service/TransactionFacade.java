@@ -50,18 +50,26 @@ public class TransactionFacade {
         Account account = findAccount(accountId);
         TransactionStrategy strategy = strategyResolver.resolve(request.type());
         BigDecimal balanceAfter = strategy.execute(account, amount);
+        UUID transactionId = UUID.randomUUID();
+        Instant createdAt = Instant.now();
 
-        TransactionResponse transaction = new TransactionResponse(
-                UUID.randomUUID(),
+        eventPublisher.publishEvent(new TransactionCompleted(
+                transactionId,
                 account.id(),
                 request.type(),
                 amount,
                 balanceAfter,
-                Instant.now()
-        );
+                createdAt
+        ));
 
-        eventPublisher.publishEvent(new TransactionCompleted(transaction));
-        return transaction;
+        return new TransactionResponse(
+                transactionId,
+                account.id(),
+                request.type(),
+                amount,
+                balanceAfter,
+                createdAt
+        );
     }
 
     private Account findAccount(String accountId) {
