@@ -1,22 +1,21 @@
 <div align="center">
 
-# ☕ Projetos Java — Fundamentos e Desafios
-### Lógica de programação • Java • Swing • Aplicações de console
+# ☕ Projetos Java — Fundamentos, Desafios e Design Patterns
+### Lógica • Java • Swing • Spring Boot • Padrões de Projeto
 
-![Java](https://img.shields.io/badge/Java-Fundamentos-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Swing](https://img.shields.io/badge/Swing-JOptionPane-2563EB?style=for-the-badge)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
 
 </div>
 
 ## 🎯 Sobre
 
-Coleção de **exercícios independentes em Java**, desenvolvidos para praticar estruturas de controle, métodos, entrada de dados, arquivos e resolução de problemas.
+Repositório educacional com exercícios independentes em Java e um projeto de API Spring Boot que demonstra padrões de projeto aplicados a operações bancárias.
 
-> Repositório educacional; não é uma aplicação Spring Boot nem um sistema empresarial.
+## 📚 Projetos
 
-## 📚 Programas incluídos
-
-| Arquivo | Conteúdo |
+| Projeto | Conteúdo |
 |---|---|
+| [Design Patterns Bank API](design-patterns-bank-api/) | API bancária com Strategy, Facade, Repository e injeção de dependências do Spring |
 | [Desafio.java](Desafio.java) | Calculadora com menu Swing: temperatura, salários, área, volume, energia e combustível |
 | [ListarArquivos.java](ListarArquivos.java) | Listagem de arquivos e ordenação por data de modificação |
 | [Person.java](Person.java) | Coleta de alturas, contagens e médias usando JOptionPane |
@@ -25,34 +24,33 @@ Coleção de **exercícios independentes em Java**, desenvolvidos para praticar 
 
 ## ⚙️ Como executar
 
-Tenha um JDK instalado (por exemplo, Java 21):
+Tenha um JDK instalado. Para executar os exercícios na raiz:
 
 ```bash
-git clone https://github.com/WalterMatheusgg/Projects_Java_Aleatorios.git
-cd Projects_Java_Aleatorios
+git clone https://github.com/WalterMatheusgg/oficina-java.git
+cd oficina-java
 javac jogoRio.java
 java jogoRio
 ```
 
-Para a calculadora com interface Swing:
+Para iniciar a API Spring Boot, instale também o Maven:
 
 ```bash
-javac Desafio.java
-java Desafio
+cd design-patterns-bank-api
+mvn spring-boot:run
 ```
 
-Para `ListarArquivos.java`, ajuste o diretório fixo no código para um caminho existente na sua máquina.
+A API disponibiliza exemplos e instruções de uso no [README do projeto](design-patterns-bank-api/README.md). A implementação de contas é em memória e reinicia com a aplicação.
 
 ## 🧠 Conceitos exercitados
 
-Estruturas `if/else` e `switch`, laços `for`/`while`, métodos, classes, `Scanner`, `JOptionPane` e `java.io.File`.
+Estruturas `if/else` e `switch`, laços `for`/`while`, métodos, classes, `Scanner`, `JOptionPane`, arquivos, API REST, padrões GoF e injeção de dependências.
 
 ## 🔧 Pontos para evolução
 
-- Tratar cancelamento e entradas numéricas inválidas.
+- Tratar cancelamento e entradas numéricas inválidas nos exercícios Swing.
 - Evitar caminhos fixos de máquina.
-- Criar testes JUnit e separar exercícios em diretórios.
-- Corrigir o laço atual de `Index.java`, cuja condição inicial impede a execução.
+- Criar testes automatizados para os projetos.
 
 ## 👨‍💻 Autor
 
