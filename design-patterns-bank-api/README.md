@@ -14,7 +14,7 @@ O foco do projeto é mostrar como os padrões de projeto podem resolver problema
 ## Como uma operação percorre a aplicação
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["HTTP request"] --> B["TransactionController"]
     B --> C["TransactionFacade"]
     C --> D["TransactionStrategy"]
