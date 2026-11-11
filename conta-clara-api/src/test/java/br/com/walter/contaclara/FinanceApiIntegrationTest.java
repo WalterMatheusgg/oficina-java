@@ -80,7 +80,7 @@ class FinanceApiIntegrationTest {
         mockMvc.perform(get("/api/summary/{month}", month))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.expenses", is(80.0)))
-                .andExpect(jsonPath("$.categories[?(@.category == 'FOOD')].status[0]", is("NEAR_LIMIT")));
+                .andExpect(jsonPath("$.categories[0].status", is("NEAR_LIMIT")));
     }
 
     @Test
