@@ -27,7 +27,7 @@ CREATE INDEX idx_transaction_drafts_created_at ON transaction_drafts (created_at
 
 CREATE TABLE monthly_budgets (
     id VARCHAR(40) PRIMARY KEY,
-    budget_month CHAR(7) NOT NULL CHECK (budget_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+    budget_month VARCHAR(7) NOT NULL CHECK (budget_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
     category VARCHAR(24) NOT NULL CHECK (category IN
         ('FOOD', 'HOUSING', 'TRANSPORT', 'HEALTH', 'EDUCATION', 'LEISURE', 'SERVICES', 'OTHER')),
     spending_limit NUMERIC(12, 2) NOT NULL CHECK (spending_limit > 0),
