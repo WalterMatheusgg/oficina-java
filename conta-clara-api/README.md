@@ -7,46 +7,38 @@
 
 </div>
 
-## O que é
+## O que o projeto faz
 
-Conta Clara é uma API de orçamento pessoal que recebe comandos de voz em português, transcreve o áudio, interpreta a intenção e consulta ou prepara movimentações financeiras. O projeto nasceu do desafio de Spring AI da DIO, mas ganhou um fluxo próprio: uma despesa sugerida pela IA fica como rascunho e só entra no histórico depois de confirmação explícita.
+Conta Clara é uma API de orçamento pessoal que entende comandos de voz em português. Ela transcreve o áudio, interpreta o pedido e pode consultar o resumo mensal ou preparar um rascunho de despesa. A resposta pode ser devolvida em texto e áudio.
 
-O objetivo foi tratar a IA como uma interface para casos de uso da aplicação. Ela não acessa o banco diretamente nem pode confirmar um lançamento por conta própria.
+O projeto foi desenvolvido para o desafio **Desenvolvendo sua API Inteligente com Reconhecimento de Fala e Spring Boot**, da DIO. A implementação mantém a IA como uma interface para casos de uso: o modelo não acessa o banco diretamente.
 
-## Fluxo de voz
+## Melhoria implementada
 
-1. O cliente envia um áudio em MP3, M4A, WAV ou WebM.
-2. O modelo de transcrição converte a fala em texto.
-3. O Spring AI encaminha a intenção para ferramentas limitadas da aplicação.
-4. A ferramenta consulta o resumo do mês ou cria um rascunho de despesa.
-5. A pessoa revisa e confirma o rascunho por um endpoint REST.
-6. A resposta pode ser sintetizada em áudio MP3.
+Uma despesa solicitada por voz não é gravada imediatamente. A API cria um rascunho que a pessoa pode revisar e confirmar por outro endpoint. A confirmação é transacional e idempotente: se a requisição for repetida, o mesmo lançamento é retornado sem duplicar a despesa.
 
-As movimentações e os rascunhos ficam no PostgreSQL. A confirmação usa bloqueio da linha do rascunho e grava o lançamento e seu vínculo na mesma transação. Repetir a confirmação retorna a movimentação já criada, sem duplicá-la.
+Também implementei limites mensais por categoria e um resumo que indica quando os gastos chegam a 80% ou ultrapassam o limite. Essas decisões deixam o fluxo mais seguro para dados financeiros e dão uma função prática ao orçamento.
 
-## O que a API faz
+## Fluxo principal
 
-- Recebe áudio e devolve transcrição, resposta, código do rascunho e áudio opcional em Base64.
-- Permite lançar receitas ou despesas manualmente como rascunho.
-- Exige confirmação explícita antes de salvar um rascunho no histórico.
-- Registra limites mensais por categoria.
-- Calcula receitas, despesas, saldo e percentual do orçamento utilizado.
-- Sinaliza categorias a partir de 80% do limite e quando ultrapassam 100%.
-- Usa valores monetários em `BigDecimal`, com até duas casas decimais.
+1. Enviar um áudio em MP3, M4A, WAV ou WebM.
+2. Transcrever a fala para texto.
+3. Interpretar a intenção com o Spring AI e chamar uma ferramenta limitada da aplicação.
+4. Receber uma resposta e, quando for um pedido de despesa, o código do rascunho.
+5. Revisar e confirmar o rascunho.
+6. Consultar a movimentação e o resumo do mês.
 
-## Organização
+## Tecnologias
 
-- `domain`: movimentações, rascunhos, limites e contratos de repositório.
-- `application`: casos de uso para confirmação, consulta e orçamento mensal.
-- `infrastructure.persistence`: adaptadores JPA, PostgreSQL e Flyway.
-- `api`: endpoints REST, validação de entrada e respostas de erro.
-- `ai`: transcrição, ChatClient, ferramentas permitidas e síntese de voz.
+- Java 21 e Spring Boot 3.5
+- Spring AI: ChatClient, tool calling, transcrição e síntese de voz
+- Spring Web, Bean Validation e Spring Data JPA
+- PostgreSQL 16 e Flyway
+- Maven, Docker Compose e JUnit
 
 ## Executar localmente
 
-Requisitos: JDK 21, Maven, Docker Compose e uma chave da API OpenAI.
-
-Na pasta do projeto:
+Requisitos: JDK 21, Maven, Docker Compose e uma chave da API OpenAI. Na pasta `conta-clara-api`:
 
 ```bash
 docker compose -f compose.yml up -d db
@@ -54,11 +46,33 @@ export OPENAI_API_KEY="sua-chave"
 mvn spring-boot:run
 ```
 
-A API inicia em `http://localhost:8081`. O PostgreSQL usa a porta `5433`; as tabelas são criadas pelo Flyway. As configurações locais podem ser substituídas por `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`. O arquivo `.env.example` lista os nomes das variáveis; não coloque chaves reais no Git.
+A API inicia em `http://localhost:8081`. O banco local usa a porta `5433`; o Flyway cria as tabelas na primeira inicialização. Para configurar outra conexão, use `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`. O arquivo `.env.example` mostra os nomes das variáveis. Não coloque uma chave real no Git.
 
-## Exemplos
+## Testar o fluxo principal
 
-Criar um rascunho manual:
+Com a aplicação e o PostgreSQL em execução, envie um áudio com um comando claro, como “Anota uma despesa de 82 reais no mercado”:
+
+```bash
+curl -X POST "http://localhost:8081/api/assistant/voice?includeSpeech=false" \
+  -F "file=@./meu-comando.m4a"
+```
+
+A resposta inclui a transcrição, a mensagem do assistente e o campo `draftId`. Revise o conteúdo e confirme usando o identificador retornado:
+
+```bash
+curl -X POST http://localhost:8081/api/drafts/ID_DO_RASCUNHO/confirm
+```
+
+Depois consulte as movimentações e o resumo do mês. Troque `2026-11` pelo mês desejado:
+
+```bash
+curl "http://localhost:8081/api/transactions?month=2026-11"
+curl "http://localhost:8081/api/summary/2026-11"
+```
+
+Para incluir a resposta falada em MP3, remova `includeSpeech=false`. O JSON retornará o áudio em Base64.
+
+Também é possível preparar um rascunho sem usar IA:
 
 ```bash
 curl -X POST http://localhost:8081/api/drafts \
@@ -66,51 +80,24 @@ curl -X POST http://localhost:8081/api/drafts \
   -d '{"description":"Compra no mercado","amount":82.50,"type":"EXPENSE","category":"FOOD"}'
 ```
 
-A resposta inclui o identificador do rascunho. Confirme somente depois de revisar os dados:
+## Testes automatizados
 
-```bash
-curl -X POST http://localhost:8081/api/drafts/ID_DO_RASCUNHO/confirm
-```
-
-Consultar lançamentos do mês:
-
-```bash
-curl "http://localhost:8081/api/transactions?month=2026-11"
-curl "http://localhost:8081/api/summary/2026-11"
-```
-
-Definir limite mensal para alimentação:
-
-```bash
-curl -X PUT http://localhost:8081/api/budgets/2026-11/FOOD \
-  -H "Content-Type: application/json" \
-  -d '{"limit":900.00}'
-```
-
-Enviar um áudio. A resposta contém o texto reconhecido, a resposta do assistente e, quando solicitado, o áudio em Base64:
-
-```bash
-curl -X POST "http://localhost:8081/api/assistant/voice?includeSpeech=false" \
-  -F "file=@./meu-comando.m4a"
-```
-
-Exemplo de comando: “Anota uma despesa de 82 reais no mercado.” A API prepara um rascunho e retorna seu código; para concluir, o cliente chama o endpoint de confirmação.
-
-## Testes
+Com PostgreSQL e `OPENAI_API_KEY` configurados:
 
 ```bash
 mvn verify
 ```
 
-Os testes de integração usam PostgreSQL e cobrem confirmação idempotente, alertas de orçamento, validação de valores, consulta mensal e rejeição de arquivos fora dos formatos aceitos. O GitHub Actions sobe um PostgreSQL de teste e executa a suíte a cada alteração neste projeto.
+A suíte contém cinco testes de integração com PostgreSQL. Ela cobre confirmação sem duplicidade, alerta de orçamento, validação de valores, consulta mensal e rejeição de formatos de áudio não aceitos. O GitHub Actions sobe um banco de teste e executa `mvn verify). Os testes não chamam os serviços pagos da OpenAI.
 
-## Decisões e limites
+## O que aprendi
 
-- A IA só recebe ferramentas para preparar despesas e consultar o resumo mensal. Nenhuma ferramenta confirma um lançamento.
-- A transcrição e a geração de voz enviam dados ao provedor configurado. Não use dados financeiros reais ou identificáveis neste projeto de portfólio.
-- Esta versão é um protótipo de estudo para uma única pessoa. Ainda não inclui autenticação, segregação entre usuários, exclusão de dados, limites operacionais do provedor ou fila durável.
-- O endpoint de voz pode gerar custo de transcrição, modelo de chat e síntese. Use `includeSpeech=false` para não solicitar áudio de resposta.
+Durante o desafio, pratiquei como integrar o Spring AI a casos de uso existentes sem dar ao modelo acesso direto à persistência. Também aprofundei o uso de tool calling, transcrição e síntese de voz, além de aplicar confirmação explícita, transações e idempotência em um fluxo que altera dados financeiros.
+
+## Limites do projeto
+
+Esta é uma API de estudo e portfólio para uso individual. Ainda não possui autenticação, separação de dados por usuário ou fila durável. O áudio é enviado ao provedor configurado para transcrição e síntese, e as chamadas podem ter custo. Não envie dados financeiros reais ou identificáveis.
 
 ## Contexto
 
-Projeto de portfólio desenvolvido por Walter Matheus para o desafio **Desenvolvendo sua API Inteligente com Reconhecimento de Fala e Spring Boot**, da DIO, a partir do repositório de estudos de Spring da [Digital Innovation One](https://github.com/digitalinnovationone/dio-spring-boot-learning-track/tree/main/05-spring-ai). A implementação acrescenta confirmação de rascunhos, orçamento por categoria e cobertura de testes.
+Projeto de portfólio desenvolvido por Walter Matheus com base no desafio da DIO e no [repositório de estudos de Spring da Digital Innovation One](https://github.com/digitalinnovationone/dio-spring-boot-learning-track/tree/main/05-spring-ai). O fluxo de confirmação, os limites por categoria e os testes foram implementados como evoluções do projeto.
