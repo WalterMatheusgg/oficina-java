@@ -1,0 +1,50 @@
+name: Conta Clara API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "conta-clara-api/**"
+      - ".github/workflows/conta-clara-api.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "conta-clara-api/**"
+      - ".github/workflows/conta-clara-api.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: conta_clara
+          POSTGRES_USER: conta_clara
+          POSTGRES_PASSWORD: conta_clara
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U conta_clara -d conta_clara"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5433/conta_clara
+      DB_USERNAME: conta_clara
+      DB_PASSWORD: conta_clara
+      OPENAI_API_KEY: ci-placeholder-key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Verify Conta Clara
+        run: mvn -B -ntp verify -f conta-clara-api/pom.xml

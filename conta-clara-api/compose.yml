@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: conta_clara
+      POSTGRES_USER: conta_clara
+      POSTGRES_PASSWORD: conta_clara
+    ports:
+      - "5433:5432"
+    volumes:
+      - conta-clara-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conta_clara -d conta_clara"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  conta-clara-db:
